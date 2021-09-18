@@ -1,0 +1,11 @@
+name: MobsSpawnWtf
+version: '2.0'
+main: com.pataxsa.mobsspawnwtf.MobsSpawnWtf
+authors: [ Pataxsa ]
+description: This is a wtf spawn mobs plugin for mc 1.12.2
+commands:
+  mobsspawnwtf:
+    description: Start or Stop MobsSpawnWtf plugin !
+    aliases: [ mobswtf ]
+    permission: mobsspawnwtf.use
+    permission-message: §8[§eMobsSpawnWtf§8] §cYou don't have the "mobspawnswtf.use" permission to do this command !
