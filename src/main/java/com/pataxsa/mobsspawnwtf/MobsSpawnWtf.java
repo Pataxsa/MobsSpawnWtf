@@ -1,16 +1,13 @@
 package com.pataxsa.mobsspawnwtf;
 
-import com.google.common.base.Predicates;
 import com.pataxsa.mobsspawnwtf.commands.CommandMobsSpawnWtf;
 import com.pataxsa.mobsspawnwtf.events.OnPlayerChatEvent;
 import com.pataxsa.mobsspawnwtf.gui.ModGui;
 import com.pataxsa.mobsspawnwtf.gui.ModPlayerGui;
 import com.pataxsa.mobsspawnwtf.gui.ModServerGui;
 import com.pataxsa.mobsspawnwtf.timers.TimerTask;
-import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader;
+import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -20,14 +17,15 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.*;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -39,6 +37,7 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
     public Scoreboard board;
     public Objective objective;
 
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
@@ -49,7 +48,7 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
         modservergui = new ModServerGui();
         modgui.modplayerinv = modplayergui;
         board = Bukkit.getServer().getScoreboardManager().getNewScoreboard();
-        objective = board.registerNewObjective("Belowname", "dummy");
+        objective = board.registerNewObjective("Players", "dummy");
         getCommand("mobsspawnwtf").setExecutor(new CommandMobsSpawnWtf(this));
         getServer().getPluginManager().registerEvents(modgui, this);
         getServer().getPluginManager().registerEvents(modplayergui, this);
@@ -85,8 +84,14 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
         for (final Player players : Bukkit.getOnlinePlayers()) {
             customplayer = new CustomPlayer(players.getName(), players.getUniqueId());
             customplayer.setCustomplayer(customplayer);
-            allPlayers.add(customplayer);
             customplayer.setgamemode(players.getGameMode());
+            allPlayers.add(customplayer);
+            ItemStack item = new ItemStack(Material.COOKED_BEEF, 64);
+            ItemMeta metadata = item.getItemMeta();
+            metadata.setDisplayName("§eThe survival cooked beef !");
+            metadata.setLore(Arrays.asList("Lore1", "Lore2"));
+            item.setItemMeta(metadata);
+            players.getInventory().addItem(item);
         }
         cancelEvent = false;
         deaths = 0;
@@ -98,14 +103,24 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                 EntityType toSpawn = mobs.get(randomentity);
                 CustomPlayer picked = allPlayers.get(new Random().nextInt(allPlayers.size()));
                 if (Bukkit.getServer().getPlayer(picked.getname()) != null) {
-                    Player player = Bukkit.getServer().getPlayer(picked.getname());
-                    int maxminmobs = rdm.nextInt(maxmobs - minmobs + 1) + minmobs;
-                    IntStream.range(0, maxminmobs).forEach(i -> {
-                        player.getWorld().spawnEntity(player.getLocation(), toSpawn);
-                    });
-                    minutes = rdm.nextInt(maxtime - mintime + 1) + mintime;
-                    player.playSound(player.getLocation(), Sound.ENTITY_ENDERDRAGON_GROWL, 1f, 1f);
-                    Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + maxminmobs + "§d " + toSpawn.getName() + "§c has spawned on " + picked.getname() + " !");
+                    if(!picked.getinrespawn()){
+                        if(picked.getgamemode() != GameMode.SPECTATOR && picked.getgamemode() != GameMode.CREATIVE && picked.getDeaths() < getConfig().getInt("Lifes")){
+                            Player player = Bukkit.getServer().getPlayer(picked.getname());
+                            int maxminmobs = rdm.nextInt(maxmobs - minmobs + 1) + minmobs;
+                            IntStream.range(0, maxminmobs).forEach(i -> {
+                                player.getWorld().spawnEntity(player.getLocation(), toSpawn);
+                            });
+                            minutes = rdm.nextInt(maxtime - mintime + 1) + mintime;
+                            player.playSound(player.getLocation(), Sound.ENTITY_ENDERDRAGON_GROWL, 1f, 1f);
+                            Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + maxminmobs + "§d " + toSpawn.getName() + "§c has spawned on " + picked.getname() + " !");
+                        }else{
+                            Player player = Bukkit.getServer().getPlayer(picked.getname());
+                            player.sendMessage("Please turn your gamemode in survival or adventure !");
+                        }
+                    }else{
+                        Player player = Bukkit.getServer().getPlayer(picked.getname());
+                        player.sendMessage("You are in respawn time !");
+                    }
                 }
             }
         }, 60L, minutes*1200);
@@ -135,8 +150,8 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                         Player player = Bukkit.getServer().getPlayer(ev.getEntity().getName());
                         World world = player.getWorld();
                         Score score = objective.getScore(Bukkit.getServer().getOfflinePlayer("Players:"));
+                        player.getInventory().clear();
                         player.setGameMode(GameMode.SPECTATOR);
-                        score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes")).count())));
                         world.strikeLightning(player.getLocation());
                         player.sendTitle("§cYou are dead !", "§cBy §b" + ev.getCause().name());
                         player.setHealth(player.getMaxHealth());
@@ -148,18 +163,36 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                             for (final Player players : Bukkit.getOnlinePlayers()) {
                                 players.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
                             }
+                        }else{
+                            if(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes")).count() == 1){
+                                allPlayers.stream().filter(s -> s.getDeaths() > this.getConfig().getInt("Lifes")).forEach(s -> {
+                                    Bukkit.broadcastMessage("§e" + s.getname() + "§a has win the game !");
+                                    Bukkit.getServer().getScheduler().cancelTask(taskID);
+                                    cancelEvent = true;
+                                    for (final Player players : Bukkit.getOnlinePlayers()) {
+                                        players.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+                                    }
+                                });
+                            }else{
+                                score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes")).count())));
+                            }
                         }
                     }else{
                         ev.setCancelled(true);
+                        Stream<CustomPlayer> result2 = allPlayers.stream().filter(s -> s.getUUID().equals(ev.getEntity().getUniqueId()));
+                        result2.forEach(s -> {
+                            s.setinrespawn(true);
+                        });
                         Player player = Bukkit.getServer().getPlayer(ev.getEntity().getName());
                         World world = player.getWorld();
+                        player.getInventory().clear();
                         player.setGameMode(GameMode.SPECTATOR);
                         player.sendTitle("§cYou are dead !", "§cBy §b" + ev.getCause().name());
                         player.setHealth(player.getMaxHealth());
                         world.strikeLightning(player.getLocation());
                         int lifes = this.getConfig().getInt("Lifes") - deaths;
                         Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + "§c is dead by §b" + ev.getCause().name() + " §c! (" + lifes + " life(s))");
-                        TimerTask task = new TimerTask(player);
+                        TimerTask task = new TimerTask(player, allPlayers);
                         task.runTaskTimer(this, 0, 20);
                     }
                 }
@@ -187,7 +220,7 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                 Score score = objective.getScore(Bukkit.getServer().getOfflinePlayer("Players:"));
                 score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes")).count())));
             }
-            Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + " §ahave joined the game !");
+            Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + " §ahas joined the game !");
         }
     }
 
@@ -195,7 +228,7 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
     public void onleave(PlayerQuitEvent ev) {
         if(!cancelEvent){
             Player player = ev.getPlayer();
-            Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + " §chave leaved the game !");
+            Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + " §chas leaved the game !");
             allPlayers.stream().filter(s -> s.getUUID() == player.getUniqueId()).forEach(s -> {
                 s.setleaved(true);
             });
