@@ -47,13 +47,6 @@ public class CommandMobsSpawnWtf implements CommandExecutor {
                             if(Integer.parseInt(args[1]) < Integer.parseInt(args[2])){
                                 if(Integer.parseInt(args[3]) < Integer.parseInt(args[4])){
                                     if(main.getConfig().getConfigurationSection("MobsSpawnWtf.").getKeys(true).size() > 0){
-                                        main.objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-                                        main.objective.setDisplayName("MobsSpawnWtf");
-                                        Score score = main.objective.getScore(Bukkit.getServer().getOfflinePlayer("Players:"));
-                                        score.setScore(Bukkit.getOnlinePlayers().size());
-                                        for (final Player players : Bukkit.getOnlinePlayers()) {
-                                            players.setScoreboard(main.board);
-                                        }
                                         for (String path : main.getConfig().getConfigurationSection("MobsSpawnWtf").getKeys(false)) {
                                             String MobsToSpawn = main.getConfig().getString("MobsSpawnWtf." + path);
                                             try{
@@ -64,6 +57,13 @@ public class CommandMobsSpawnWtf implements CommandExecutor {
                                             }
                                         }
                                         if(errors == 0){
+                                            main.objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+                                            main.objective.setDisplayName("§7- §cMob§esS§apawn§9Wtf §7-");
+                                            Score score = main.objective.getScore(Bukkit.getServer().getOfflinePlayer("§7Players:"));
+                                            score.setScore(Bukkit.getOnlinePlayers().size());
+                                            for (final Player players : Bukkit.getOnlinePlayers()) {
+                                                players.setScoreboard(main.board);
+                                            }
                                             Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §aThe plugin has just been started with minmobs: §e" + Integer.parseInt(args[1]) + "§a maxmobs: §e" + Integer.parseInt(args[2]) + "§a mintime: §e" + Integer.parseInt(args[3]) + "§a maxtime: §e" + Integer.parseInt(args[4]) + "§a Mobs: §e" + main.getConfig().getConfigurationSection("MobsSpawnWtf").getKeys(true).size());
                                             main.stopMobs();
                                             main.startMobs(sender, Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3]), Integer.parseInt(args[4]));

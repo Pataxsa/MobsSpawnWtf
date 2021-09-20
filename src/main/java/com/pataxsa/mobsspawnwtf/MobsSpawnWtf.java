@@ -6,7 +6,6 @@ import com.pataxsa.mobsspawnwtf.gui.ModGui;
 import com.pataxsa.mobsspawnwtf.gui.ModPlayerGui;
 import com.pataxsa.mobsspawnwtf.gui.ModServerGui;
 import com.pataxsa.mobsspawnwtf.timers.TimerTask;
-import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader;
 import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
@@ -23,7 +22,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -88,8 +86,7 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
             allPlayers.add(customplayer);
             ItemStack item = new ItemStack(Material.COOKED_BEEF, 64);
             ItemMeta metadata = item.getItemMeta();
-            metadata.setDisplayName("§eThe survival cooked beef !");
-            metadata.setLore(Arrays.asList("Lore1", "Lore2"));
+            metadata.setDisplayName("§eEat to survive");
             item.setItemMeta(metadata);
             players.getInventory().addItem(item);
         }
@@ -99,28 +96,34 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
         uuid = null;
         taskID = Bukkit.getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
             public void run() {
-                int randomentity = new Random().nextInt(mobs.size());
-                EntityType toSpawn = mobs.get(randomentity);
-                CustomPlayer picked = allPlayers.get(new Random().nextInt(allPlayers.size()));
-                if (Bukkit.getServer().getPlayer(picked.getname()) != null) {
-                    if(!picked.getinrespawn()){
-                        if(picked.getgamemode() != GameMode.SPECTATOR && picked.getgamemode() != GameMode.CREATIVE && picked.getDeaths() < getConfig().getInt("Lifes")){
-                            Player player = Bukkit.getServer().getPlayer(picked.getname());
+                ArrayList<UUID> uuids = new ArrayList<UUID>();
+                allPlayers.stream().filter(s -> s.getDeaths() < getConfig().getInt("Lifes") && !s.getleaved() && s.getgamemode() != GameMode.CREATIVE).forEach(s -> {
+                    if(!s.getinrespawn()){
+                        if(s.getgamemode() != GameMode.SPECTATOR){
+                            uuids.add(s.getUUID());
+                        }
+                    }else{
+                        uuids.add(s.getUUID());
+                    }
+                });
+                if(uuids.size() == 0){
+                    Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §cAll the players are in creative or spectator !");
+                }else{
+                    UUID playeruuid = uuids.get(new Random().nextInt(uuids.size()));
+                    int randomentity = new Random().nextInt(mobs.size());
+                    EntityType toSpawn = mobs.get(randomentity);
+                    allPlayers.stream().filter(s -> s.getUUID().equals(playeruuid)).forEach(s -> {
+                        if (Bukkit.getServer().getPlayer(s.getname()) != null) {
+                            Player player = Bukkit.getServer().getPlayer(s.getname());
                             int maxminmobs = rdm.nextInt(maxmobs - minmobs + 1) + minmobs;
                             IntStream.range(0, maxminmobs).forEach(i -> {
                                 player.getWorld().spawnEntity(player.getLocation(), toSpawn);
                             });
                             minutes = rdm.nextInt(maxtime - mintime + 1) + mintime;
                             player.playSound(player.getLocation(), Sound.ENTITY_ENDERDRAGON_GROWL, 1f, 1f);
-                            Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + maxminmobs + "§d " + toSpawn.getName() + "§c has spawned on " + picked.getname() + " !");
-                        }else{
-                            Player player = Bukkit.getServer().getPlayer(picked.getname());
-                            player.sendMessage("Please turn your gamemode in survival or adventure !");
+                            Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + maxminmobs + "§d " + toSpawn.getName() + "§c has spawned on " + s.getname() + " !");
                         }
-                    }else{
-                        Player player = Bukkit.getServer().getPlayer(picked.getname());
-                        player.sendMessage("You are in respawn time !");
-                    }
+                    });
                 }
             }
         }, 60L, minutes*1200);
@@ -149,7 +152,7 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                         ev.setCancelled(true);
                         Player player = Bukkit.getServer().getPlayer(ev.getEntity().getName());
                         World world = player.getWorld();
-                        Score score = objective.getScore(Bukkit.getServer().getOfflinePlayer("Players:"));
+                        Score score = objective.getScore(Bukkit.getServer().getOfflinePlayer("§7Players:"));
                         player.getInventory().clear();
                         player.setGameMode(GameMode.SPECTATOR);
                         world.strikeLightning(player.getLocation());
@@ -157,7 +160,7 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                         player.setHealth(player.getMaxHealth());
                         Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + "§c is dead by §b" + ev.getCause().name() + " §c! (Eleminated)");
                         if(allPlayers.stream().filter(s -> s.getDeaths() < getConfig().getInt("Lifes")).count() == 0){
-                            Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §cThere is not alive players in game, then i have stopped the plugin !");
+                            Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + "§a has win the game !");
                             Bukkit.getServer().getScheduler().cancelTask(taskID);
                             cancelEvent = true;
                             for (final Player players : Bukkit.getOnlinePlayers()) {
@@ -165,8 +168,10 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                             }
                         }else{
                             if(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes")).count() == 1){
-                                allPlayers.stream().filter(s -> s.getDeaths() > this.getConfig().getInt("Lifes")).forEach(s -> {
-                                    Bukkit.broadcastMessage("§e" + s.getname() + "§a has win the game !");
+                                allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes")).forEach(s -> {
+                                    Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + s.getname() + "§a has win the game !");
+                                    Player player2 =  Bukkit.getServer().getPlayer(s.getname());
+                                    player2.sendTitle("§aYou win the game !", "§2GG you win !");
                                     Bukkit.getServer().getScheduler().cancelTask(taskID);
                                     cancelEvent = true;
                                     for (final Player players : Bukkit.getOnlinePlayers()) {
@@ -174,7 +179,7 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                                     }
                                 });
                             }else{
-                                score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes")).count())));
+                                score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes") && !s.getleaved()).count())));
                             }
                         }
                     }else{
@@ -204,23 +209,20 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
     public void onjoin(PlayerJoinEvent ev) {
         if(!cancelEvent){
             Player player = ev.getPlayer();
-            player.setScoreboard(board);
-            allPlayers.stream().filter(s -> s.getUUID() == player.getUniqueId()).forEach(s -> {
-                customplayer = s.getCustomplayer();
-            });
-            if(allPlayers.contains(customplayer)){
-                allPlayers.stream().filter(s -> s.getUUID() == player.getUniqueId()).forEach(s -> {
-                    s.setleaved(false);
-                });
-            }else{
+            Score score = objective.getScore(Bukkit.getServer().getOfflinePlayer("§7Players:"));
+            if(allPlayers.stream().filter(s -> s.getUUID().equals(player.getUniqueId())).count() == 0){
                 customplayer = new CustomPlayer(player.getName(), player.getUniqueId());
                 customplayer.setCustomplayer(customplayer);
-                allPlayers.add(customplayer);
                 customplayer.setgamemode(player.getGameMode());
-                Score score = objective.getScore(Bukkit.getServer().getOfflinePlayer("Players:"));
-                score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes")).count())));
+                allPlayers.add(customplayer);
+            }else{
+                allPlayers.stream().filter(s -> s.getUUID().equals(player.getUniqueId())).forEach(s -> {
+                    s.setleaved(false);
+                });
             }
-            Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + " §ahas joined the game !");
+            score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes") && !s.getleaved()).count())));
+            player.setScoreboard(board);
+            ev.setJoinMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + " §ahas joined the game ! §7(§b" + allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes") && !s.getleaved()).count() + "§7/§b" + Bukkit.getServer().getMaxPlayers() + "§7)");
         }
     }
 
@@ -228,18 +230,28 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
     public void onleave(PlayerQuitEvent ev) {
         if(!cancelEvent){
             Player player = ev.getPlayer();
-            Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + " §chas leaved the game !");
-            allPlayers.stream().filter(s -> s.getUUID() == player.getUniqueId()).forEach(s -> {
+            Score score = objective.getScore(Bukkit.getServer().getOfflinePlayer("§7Players:"));
+            allPlayers.stream().filter(s -> s.getUUID().equals(player.getUniqueId())).forEach(s -> {
                 s.setleaved(true);
             });
-            if(allPlayers.stream().filter(s -> !s.getleaved()).count() == 0){
-                Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §cThere is not alive players in game, then i have stopped the plugin !");
+            score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes") && !s.getleaved()).count())));
+            if(allPlayers.stream().filter(s -> !s.getleaved()).count() == 1){
+                allPlayers.stream().filter(s -> !s.getleaved()).forEach(s -> {
+                    Player player2 =  Bukkit.getServer().getPlayer(s.getname());
+                    player2.sendTitle("§aYou win the game !", "§2GG you win !");
+                    Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + s.getname() + "§a has win the game !");
+                    Bukkit.getServer().getScheduler().cancelTask(taskID);
+                    cancelEvent = true;
+                    for (final Player players : Bukkit.getOnlinePlayers()) {
+                        players.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+                    }
+                });
+            }else if(allPlayers.stream().filter(s -> !s.getleaved()).count() == 0){
+                Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §cThere is not players in the game, then i have stopped the plugin !");
                 Bukkit.getServer().getScheduler().cancelTask(taskID);
                 cancelEvent = true;
-                for (final Player players : Bukkit.getOnlinePlayers()) {
-                    players.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
-                }
             }
+            ev.setQuitMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + " §chas leaved the game ! §7(§b" + allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes") && !s.getleaved()).count() + "§7/§b" + Bukkit.getServer().getMaxPlayers() + "§7)");
         }
     }
 
