@@ -161,6 +161,8 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                         Bukkit.getServer().broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + "§c is dead by §b" + ev.getCause().name() + " §c! (Eleminated)");
                         if(allPlayers.stream().filter(s -> s.getDeaths() < getConfig().getInt("Lifes")).count() == 0){
                             Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + player.getName() + "§a has win the game !");
+                            Player player2 =  Bukkit.getServer().getPlayer(player.getName());
+                            player2.sendTitle("§aYou win the game !", "§2GG you win !");
                             Bukkit.getServer().getScheduler().cancelTask(taskID);
                             cancelEvent = true;
                             for (final Player players : Bukkit.getOnlinePlayers()) {
@@ -218,6 +220,12 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
             }else{
                 allPlayers.stream().filter(s -> s.getUUID().equals(player.getUniqueId())).forEach(s -> {
                     s.setleaved(false);
+                    if(s.getinrespawn()){
+                        TimerTask task = new TimerTask(player, allPlayers);
+                        task.runTaskTimer(this, 0, 20);
+                    }else{
+                        player.setGameMode(GameMode.SURVIVAL);
+                    }
                 });
             }
             score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes") && !s.getleaved()).count())));
@@ -235,8 +243,8 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
                 s.setleaved(true);
             });
             score.setScore(Integer.parseInt(Long.toString(allPlayers.stream().filter(s -> s.getDeaths() < this.getConfig().getInt("Lifes") && !s.getleaved()).count())));
-            if(allPlayers.stream().filter(s -> !s.getleaved()).count() == 1){
-                allPlayers.stream().filter(s -> !s.getleaved()).forEach(s -> {
+            if(allPlayers.stream().filter(s -> !s.getleaved() && s.getDeaths() < this.getConfig().getInt("Lifes")).count() == 1){
+                allPlayers.stream().filter(s -> !s.getleaved() && s.getDeaths() < this.getConfig().getInt("Lifes")).forEach(s -> {
                     Player player2 =  Bukkit.getServer().getPlayer(s.getname());
                     player2.sendTitle("§aYou win the game !", "§2GG you win !");
                     Bukkit.broadcastMessage("§8[§eMobsSpawnWtf§8] §e" + s.getname() + "§a has win the game !");
