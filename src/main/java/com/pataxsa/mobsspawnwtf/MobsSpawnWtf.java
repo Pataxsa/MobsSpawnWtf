@@ -1,7 +1,6 @@
 package com.pataxsa.mobsspawnwtf;
 
 import com.pataxsa.mobsspawnwtf.commands.CommandMobsSpawnWtf;
-import com.pataxsa.mobsspawnwtf.events.OnPlayerChatEvent;
 import com.pataxsa.mobsspawnwtf.gui.ModGui;
 import com.pataxsa.mobsspawnwtf.gui.ModPlayerGui;
 import com.pataxsa.mobsspawnwtf.gui.ModServerGui;
@@ -51,7 +50,6 @@ public class MobsSpawnWtf extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(modgui, this);
         getServer().getPluginManager().registerEvents(modplayergui, this);
         getServer().getPluginManager().registerEvents(modservergui, this);
-        getServer().getPluginManager().registerEvents(new OnPlayerChatEvent(this, modgui, modservergui), this);
         getServer().getPluginManager().registerEvents(this, this);
     }
 
